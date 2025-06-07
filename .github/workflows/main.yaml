@@ -1,0 +1,51 @@
+name: main
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # `go test` uses only a high-confidence subset of go vet, so execute also `go vet`
+      - run: make vet
+
+      - run: go fmt ./... && git diff --exit-code
+
+      - run: make test
+
+  release:
+    runs-on: ubuntu-latest
+    needs: test
+    if: contains(github.ref, 'tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: docker/login-action@v3
+        with:
+          username: abicky
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          # Use a custom token instead of GITHUB_TOKEN for the homebrew tap
+          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}

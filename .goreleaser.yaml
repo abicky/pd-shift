@@ -1,0 +1,64 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy # Download all the packages listed in go.sum
+    - go install github.com/Songmu/gocredits/cmd/gocredits@latest
+    - gocredits -w .
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/abicky/pd-shift/cmd.version={{.Version}} -X github.com/abicky/pd-shift/cmd.revision={{.ShortCommit}}
+archives:
+  - # Exclude the version to download the latest version via https://github.com/abicky/pd-shift/releases/latest/download/$archive_name
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
+    files:
+      - LICENSE
+      - README.md
+      - CREDITS
+    wrap_in_directory: true
+brews:
+  - repository:
+      owner: abicky
+      name: homebrew-tools
+    homepage: "https://github.com/abicky/pd-shift"
+    description: "A CLI tool for managing PagerDuty on-call shifts"
+    directory: Formula
+    install: |
+      bin.install "pd-shift"
+      generate_completions_from_executable(bin/"pd-shift", "completion")
+    test: |
+      system "#{bin}/pd-shift --version"
+kos:
+  - repositories:
+      - abicky/pd-shift
+    tags:
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Version }}"
+      - latest
+    bare: true
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    # Disable SBOM because Cosign SBOM attachments are deprecated
+    # cf. https://github.com/sigstore/cosign/blob/main/specs/SBOM_SPEC.md
+    sbom: none
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  version_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
