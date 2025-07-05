@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -12,13 +13,14 @@ import (
 )
 
 const (
-	toolName = "pd-shift"
+	toolName       = "pd-shift"
+	defaultVersion = "dev"
 )
 
 // These variables should be overwritten by -ldflags
 var (
-	version  = "dev"
-	revision = "HEAD"
+	version  = defaultVersion
+	revision string
 )
 
 var vipers = make(map[*cobra.Command]*viper.Viper)
@@ -61,9 +63,17 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.SetVersionTemplate(fmt.Sprintf(
-		`{{with .Name}}{{printf "%%s " .}}{{end}}{{printf "version %%s" .Version}} (revision %s)
+	if version == defaultVersion {
+		if bi, ok := debug.ReadBuildInfo(); ok {
+			version = strings.TrimPrefix(bi.Main.Version, "v")
+			rootCmd.Version = version
+		}
+	}
+	if revision != "" {
+		rootCmd.SetVersionTemplate(fmt.Sprintf(
+			`{{with .Name}}{{printf "%%s " .}}{{end}}{{printf "version %%s" .Version}} (revision %s)
 `, revision))
+	}
 
 	rootCmd.AddGroup(defaultCommandGroup, auxiliaryCommandGroup)
 	rootCmd.SetHelpCommandGroupID(auxiliaryCommandGroup.ID)
