@@ -23,11 +23,32 @@ var (
 
 var vipers = make(map[*cobra.Command]*viper.Viper)
 
+var (
+	defaultCommandGroup = &cobra.Group{
+		ID:    "default",
+		Title: "Commands:",
+	}
+	auxiliaryCommandGroup = &cobra.Group{
+		ID:    "auxiliary",
+		Title: "Auxiliary Commands:",
+	}
+)
+
 var rootCmd = &cobra.Command{
 	Use:     toolName,
 	Short:   "A CLI tool for managing PagerDuty on-call shifts",
 	Long:    "A CLI tool for managing PagerDuty on-call shifts",
 	Version: version,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Workaround for https://github.com/spf13/cobra/issues/1918
+		for c := cmd; c != nil; c = c.Parent() {
+			if c.GroupID == auxiliaryCommandGroup.ID {
+				c.Root().PersistentFlags().Lookup("api-key").Annotations[cobra.BashCompOneRequiredFlag] = []string{"false"}
+				break
+			}
+		}
+		return nil
+	},
 }
 
 func Execute() {
@@ -43,6 +64,10 @@ func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf(
 		`{{with .Name}}{{printf "%%s " .}}{{end}}{{printf "version %%s" .Version}} (revision %s)
 `, revision))
+
+	rootCmd.AddGroup(defaultCommandGroup, auxiliaryCommandGroup)
+	rootCmd.SetHelpCommandGroupID(auxiliaryCommandGroup.ID)
+	rootCmd.SetCompletionCommandGroupID(auxiliaryCommandGroup.ID)
 
 	rootCmd.PersistentFlags().String("config", "", "Path to config file")
 	rootCmd.PersistentFlags().String("api-key", "", "PagerDuty API key")

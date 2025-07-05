@@ -24,7 +24,8 @@ var countCmd = &cobra.Command{
 	Short: "Count PagerDuty on-call shifts",
 	Long: `This command counts PagerDuty on-call shifts based on the specified configuration.
 For full configuration details, refer to https://github.com/abicky/pd-shift#configurations`,
-	Args: cobra.NoArgs,
+	Args:    cobra.NoArgs,
+	GroupID: defaultCommandGroup.ID,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Prevent showing usage after validation
 		cmd.SilenceUsage = true
